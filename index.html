@@ -1,30 +1,70 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>VEER Dispatch — Login</title>
-  <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-  <script>
-    // Initialize EmailJS later in script.js with your USER_ID
-  </script>
+  <meta charset="UTF-8">
+  <title>VEER ENTERPRISE - Login</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .login-box {
+      background: white;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc;
+      width: 300px;
+      text-align: center;
+    }
+    .login-box img {
+      width: 90px;
+      margin-bottom: 10px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>VEER Dispatch</h1>
-    <p>Login / Register with mobile number</p>
-
-    <form id="loginForm">
-      <label>Mobile Number</label>
-      <input id="mobileInput" type="tel" placeholder="+91xxxxxxxxxx" required />
-      <button type="submit">Continue</button>
-    </form>
-
-    <p class="small">App for VEER ENTERPRISE product dispatch. Add to home screen for quick access.</p>
+  <div class="login-box">
+    <img src="veer_logo.png" alt="VEER ENTERPRISE">
+    <h2>🔐 VEER ENTERPRISE</h2>
+    <input type="tel" id="mobile" placeholder="Enter your mobile number" required>
+    <button id="loginBtn">Login</button>
   </div>
 
-  <script src="script.js"></script>
+  <script>
+    const USER_KEY = "veer_dispatch_user";
+    document.getElementById("loginBtn").addEventListener("click", ()=>{
+      const mobile = document.getElementById("mobile").value.trim();
+      if(!mobile || mobile.length < 8) return alert("Please enter valid mobile number");
+      const user = { mobile };
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      location.href = "dispatch.html";
+    });
+
+    // Auto redirect if already logged in
+    const existing = JSON.parse(localStorage.getItem(USER_KEY) || "null");
+    if (existing) location.href = "dispatch.html";
+  </script>
 </body>
 </html>

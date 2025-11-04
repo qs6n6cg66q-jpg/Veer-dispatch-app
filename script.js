@@ -1,260 +1,169 @@
-// Replace these EmailJS placeholders with your real values
-const EMAILJS_USER_ID = 'YOUR_EMAILJS_USER_ID'; // public key
-const EMAILJS_SERVICE_ID = 'YOUR_SERVICE_ID';
-const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';
-const ADMIN_EMAIL = 'er.hardik.7@gmail.com';
-
+// VEER ENTERPRISE DISPATCH APP - FINAL by Hardik
 (function(){
-  // Initialize EmailJS if user id provided
-  if (EMAILJS_USER_ID && window.emailjs) {
-    emailjs.init(EMAILJS_USER_ID);
+  const USER_KEY = "veer_dispatch_user";
+
+  function $(id){ return document.getElementById(id); }
+
+  // ---------- DISPATCH PAGE ----------
+  const user = JSON.parse(localStorage.getItem(USER_KEY) || "null");
+  if (!user) location.href = "index.html";
+
+  $("userBadge").textContent = `Logged in as: ${user.mobile}`;
+
+  const dtInput = $("dt");
+  const pad = n=>n.toString().padStart(2,"0");
+  const now = new Date();
+  dtInput.value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+  const userKey = `veer_dispatch_history_${user.mobile}`;
+  function loadHistory(){ return JSON.parse(localStorage.getItem(userKey) || "[]"); }
+  function saveHistory(list){ localStorage.setItem(userKey, JSON.stringify(list)); }
+
+  function extractMapUrl(text){
+    if(!text) return "";
+    if(text.includes("google.com/maps")) return text;
+    const match = text.match(/([-+]?\d*\.\d+),\s*([-+]?\d*\.\d+)/);
+    if(match){
+      return `https://www.google.com/maps?q=${match[1]},${match[2]}`;
+    }
+    return "";
   }
 
-  // Helpers
-  function $(id){ return document.getElementById(id) }
-  const STORAGE_KEY = 'veer_dispatch_history_v1';
-  const USER_KEY = 'veer_dispatch_user';
+  function renderHistory(filter=""){
+    const list = loadHistory().filter(r=>
+      !filter || r.serial.includes(filter) ||
+      r.receiver.toLowerCase().includes(filter.toLowerCase()) ||
+      r.pname.toLowerCase().includes(filter.toLowerCase())
+    ).sort((a,b)=> new Date(b.datetime)-new Date(a.datetime));
 
-  // If on index.html -> Login flow
-  if (document.getElementById('loginForm')) {
-    const loginForm = $('loginForm');
-    loginForm.addEventListener('submit', e=>{
-      e.preventDefault();
-      const mobile = $('mobileInput').value.trim();
-      if (!mobile) return alert('Mobile number required');
-      // save user
-      const user = { mobile, createdAt: new Date().toISOString() };
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
-
-      // send email to admin notifying new user (if EmailJS configured)
-      sendRegistrationEmail(user);
-      // go to dispatch page
-      location.href = 'dispatch.html';
+    const body = document.querySelector("#historyTable tbody");
+    body.innerHTML = "";
+    list.forEach((r,i)=>{
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${new Date(r.datetime).toLocaleString()}</td>
+        <td>${r.pname || ''}</td>
+        <td>${r.serial}</td>
+        <td>${r.desc || ''}</td>
+        <td>${r.receiver}</td>
+        <td>${r.rmobile}</td>
+        <td><a href="${extractMapUrl(r.rlocation)}" target="_blank">${r.rlocation||""}</a></td>
+        <td><button data-i="${i}" class="delBtn">🗑</button></td>`;
+      body.appendChild(tr);
     });
-    return;
-  }
-
-  // If on dispatch.html -> main app
-  const user = JSON.parse(localStorage.getItem(USER_KEY) || '{}');
-  if (!user || !user.mobile) {
-    // no user — redirect to login
-    location.href = 'index.html';
-  }
-
-  // UI refs
-  const userBadge = $('userBadge');
-  const dispatchForm = $('dispatchForm');
-  const historyTableBody = document.querySelector('#historyTable tbody');
-  const dtInput = $('dt');
-
-  userBadge.textContent = `You: ${user.mobile}`;
-
-  // set datetime default
-  const nowISO = new Date();
-  // local datetime-local formatting
-  function toDatetimeLocal(d){
-    const pad = n=>n.toString().padStart(2,'0');
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-  dtInput.value = toDatetimeLocal(nowISO);
-
-  // Load history
-  function loadHistory(){
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  }
-  function saveHistory(list){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  }
-
-  function renderHistory(filter=''){
-    const data = loadHistory();
-    const rows = data
-      .filter(item=>!filter || (item.serial||'').includes(filter) || (item.receiver||'').toLowerCase().includes(filter.toLowerCase()))
-      .sort((a,b)=> new Date(b.datetime) - new Date(a.datetime));
-    historyTableBody.innerHTML = '';
-    rows.forEach((r, idx)=>{
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${new Date(r.datetime).toLocaleString()}</td>
-                      <td>${r.serial}</td>
-                      <td>${r.receiver}</td>
-                      <td>${r.rmobile}</td>
-                      <td>${r.rlocation || ''}</td>
-                      <td>
-                        <button data-idx="${idx}" class="delBtn">Delete</button>
-                      </td>`;
-      historyTableBody.appendChild(tr);
-    });
-    // attach delete handlers
-    document.querySelectorAll('.delBtn').forEach(btn=>{
-      btn.addEventListener('click', (ev)=>{
-        const index = Number(ev.target.getAttribute('data-idx'));
-        let list = loadHistory();
-        // rows are sorted — delete by matching serial + datetime for safety
-        const sorted = list.slice().sort((a,b)=> new Date(b.datetime) - new Date(a.datetime));
-        const toDelete = sorted[index];
-        if (!toDelete) return;
-        // remove first matching element by id/time/serial
-        const newList = list.filter(item => !(item.datetime===toDelete.datetime && item.serial===toDelete.serial && item.rmobile===toDelete.rmobile));
-        saveHistory(newList);
-        renderHistory($('search').value.trim());
-      });
+    document.querySelectorAll(".delBtn").forEach(btn=>{
+      btn.onclick = ()=>{
+        const list = loadHistory();
+        list.splice(btn.dataset.i,1);
+        saveHistory(list);
+        renderHistory(filter);
+      };
     });
   }
 
   renderHistory();
 
-  // Submit dispatch
-  dispatchForm.addEventListener('submit', e=>{
+  $("dispatchForm").addEventListener("submit", e=>{
     e.preventDefault();
-    const datetime = $('dt').value ? new Date($('dt').value).toISOString() : new Date().toISOString();
-    const serial = $('serial').value.trim();
-    const receiver = $('rname').value.trim();
-    const rmobile = $('rmobile').value.trim();
-    const rlocation = $('rloc').value.trim();
-
-    if (!serial || !receiver || !rmobile) return alert('Serial, receiver name & mobile required');
-
-    const entry = {
-      datetime, serial, receiver, rmobile, rlocation, createdBy: user.mobile
+    const obj = {
+      datetime: new Date($("dt").value).toISOString(),
+      pname: $("pname").value.trim(),
+      serial: $("serial").value.trim(),
+      desc: $("desc").value.trim(),
+      receiver: $("rname").value.trim(),
+      rmobile: $("rmobile").value.trim(),
+      rlocation: $("rloc").value.trim(),
+      createdBy: user.mobile
     };
-
-    const list = loadHistory();
-    list.push(entry);
-    saveHistory(list);
-    renderHistory($('search').value.trim());
-
-    // Optionally send a small email notification about each dispatch
-    sendDispatchEmail(entry);
-
-    // clear few fields
-    $('serial').value=''; $('rname').value=''; $('rmobile').value=''; $('rloc').value='';
-    $('dt').value = toDatetimeLocal(new Date());
+    if(!obj.pname || !obj.serial || !obj.receiver || !obj.rmobile)
+      return alert("Please fill all required fields!");
+    const list = loadHistory(); list.push(obj); saveHistory(list);
+    renderHistory(); e.target.reset();
   });
 
-  // Search
-  $('search').addEventListener('input', e=>{
-    renderHistory(e.target.value.trim());
-  });
+  $("search").addEventListener("input", e=> renderHistory(e.target.value));
 
-  // Get GPS
-  $('getLocation').addEventListener('click', ()=>{
-    if (!navigator.geolocation) return alert('Geolocation not supported');
-    $('getLocation').textContent = 'Fetching...';
+  $("getLocation").addEventListener("click", ()=>{
+    if(!navigator.geolocation) return alert("GPS not supported");
+    $("getLocation").textContent="Getting...";
     navigator.geolocation.getCurrentPosition(pos=>{
       const lat = pos.coords.latitude.toFixed(6);
       const lon = pos.coords.longitude.toFixed(6);
-      const url = `https://www.google.com/maps?q=${lat},${lon}`;
-      $('rloc').value = `${lat},${lon} (${url})`;
-      $('getLocation').textContent = 'Fetch Current GPS';
+      $("rloc").value = `${lat},${lon}`;
+      $("getLocation").textContent="📍 Fetch Current GPS";
     }, err=>{
-      alert('GPS error: '+err.message);
-      $('getLocation').textContent = 'Fetch Current GPS';
-    }, {timeout:10000});
-  });
-
-  // Export to Excel (SheetJS)
-  $('exportExcel').addEventListener('click', ()=>{
-    const data = loadHistory().map(r=>({
-      'DateTime': new Date(r.datetime).toLocaleString(),
-      'Serial': r.serial,
-      'Receiver': r.receiver,
-      'Receiver Mobile': r.rmobile,
-      'Receiver Location': r.rlocation || '',
-      'Added By': r.createdBy || ''
-    }));
-    if (data.length===0) return alert('No data to export');
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Dispatches');
-    const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
-    const blob = new Blob([wbout],{type:'application/octet-stream'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `veer_dispatch_${new Date().toISOString().slice(0,10)}.xlsx`;
-    document.body.appendChild(a); a.click(); a.remove();
-  });
-
-  // Export to PDF (jsPDF)
-  $('exportPdf').addEventListener('click', async ()=>{
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p','pt','a4');
-    const data = loadHistory();
-    if (data.length===0) return alert('No data to export');
-    doc.setFontSize(12);
-    doc.text(`VEER ENTERPRISE - Dispatch History (${new Date().toLocaleDateString()})`, 40, 40);
-    // simple table starting y
-    let y = 70;
-    const rowHeight = 16;
-    doc.setFontSize(10);
-    doc.text('Date / Time',40,y); doc.text('Serial',160,y); doc.text('Receiver',240,y); doc.text('Mobile',360,y);
-    y += rowHeight;
-    data.forEach(r=>{
-      if (y > 760) { doc.addPage(); y = 40; }
-      doc.text(new Date(r.datetime).toLocaleString(), 40, y);
-      doc.text(String(r.serial),160,y);
-      doc.text(String(r.receiver),240,y);
-      doc.text(String(r.rmobile),360,y);
-      y += rowHeight;
+      alert("GPS Error: "+err.message);
+      $("getLocation").textContent="📍 Fetch Current GPS";
     });
-    doc.save(`veer_dispatch_${new Date().toISOString().slice(0,10)}.pdf`);
   });
 
-  // Share (Web Share API)
-  $('shareData').addEventListener('click', async ()=>{
+  $("exportExcel").addEventListener("click", ()=>{
     const data = loadHistory();
-    if (!data.length) return alert('No data to share');
-    const latest = data.slice(-1)[0];
-    const text = `VEER Dispatch\nSerial: ${latest.serial}\nReceiver: ${latest.receiver}\nMobile: ${latest.rmobile}\nTime: ${new Date(latest.datetime).toLocaleString()}\nLocation: ${latest.rlocation || ''}`;
-    if (navigator.share) {
-      try { await navigator.share({ title: 'VEER Dispatch', text }); }
-      catch(err){ alert('Share canceled or failed: '+err); }
-    } else {
-      // fallback: copy text to clipboard
-      try {
-        await navigator.clipboard.writeText(text);
-        alert('Latest dispatch copied to clipboard. Paste to share.');
-      } catch(e){ alert('Share not supported on this device.'); }
+    if(!data.length) return alert("No data");
+    const exportData = data.map(d => ({
+      DateTime: new Date(d.datetime).toLocaleString(),
+      ProductName: d.pname,
+      SerialNo: d.serial,
+      Description: d.desc,
+      Receiver: d.receiver,
+      Mobile: d.rmobile,
+      Location: d.rlocation
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Dispatch");
+    const wbout = XLSX.write(wb, {bookType:"xlsx", type:"array"});
+    const blob = new Blob([wbout], {type:"application/octet-stream"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `dispatch_${user.mobile}.xlsx`;
+    a.click();
+  });
+
+  $("exportPdf").addEventListener("click", ()=>{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const data = loadHistory();
+    if(!data.length) return alert("No data");
+    doc.text(`VEER ENTERPRISE - ${user.mobile}`, 10,10);
+    let y=20;
+    data.forEach(d=>{
+      doc.text(`${new Date(d.datetime).toLocaleString()} | ${d.pname} | ${d.serial} | ${d.receiver}`,10,y);
+      y+=10; if(y>280){doc.addPage();y=20;}
+    });
+    doc.save(`dispatch_${user.mobile}.pdf`);
+  });
+
+  $("shareData").addEventListener("click", async ()=>{
+    const data = loadHistory();
+    if(!data.length) return alert("No data");
+    const d = data[data.length-1];
+    const text = `VEER DISPATCH\nProduct: ${d.pname}\nSerial: ${d.serial}\nReceiver: ${d.receiver}\nMobile: ${d.rmobile}\nLocation: ${d.rlocation}`;
+    if(navigator.share){ await navigator.share({text}); } else {
+      await navigator.clipboard.writeText(text);
+      alert("Copied to clipboard.");
     }
   });
 
-  // Clear all local data
-  $('clearAll').addEventListener('click', ()=>{
-    if (!confirm('Clear all local dispatch records? This cannot be undone.')) return;
-    localStorage.removeItem(STORAGE_KEY);
-    renderHistory();
+  $("clearAll").addEventListener("click", ()=>{
+    if(confirm("Delete all records?")){
+      localStorage.removeItem(userKey);
+      renderHistory();
+    }
   });
 
-  // Email sending functions (requires EmailJS setup)
-  function sendRegistrationEmail(userObj){
-    if (!emailjs || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) return;
-    const templateParams = {
-      admin_email: ADMIN_EMAIL,
-      user_mobile: userObj.mobile,
-      user_created_at: userObj.createdAt
-    };
-    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
-      .then(()=> console.log('Registration email sent'))
-      .catch(err=> console.error('Email send error', err));
-  }
-  function sendDispatchEmail(entry){
-    if (!emailjs || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) return;
-    // Using same template; you can create new template id if you prefer
-    const templateParams = {
-      admin_email: ADMIN_EMAIL,
-      user_mobile: entry.createdBy,
-      dispatch_datetime: new Date(entry.datetime).toLocaleString(),
-      serial: entry.serial,
-      receiver: entry.receiver,
-      receiver_mobile: entry.rmobile,
-      receiver_location: entry.rlocation || ''
-    };
-    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
-      .then(()=> console.log('Dispatch email sent'))
-      .catch(err=> console.error('Email send error', err));
-  }
-
-  // initial render
-  renderHistory();
-
+  // 3-dot menu & Logout
+  const menuBtn = $("menuBtn"), menuPopup = $("menuPopup"), logoutBtn = $("logoutBtn");
+  menuBtn.addEventListener("click", ()=>{
+    menuPopup.style.display = (menuPopup.style.display==="none"||menuPopup.style.display==="")?"block":"none";
+  });
+  document.addEventListener("click", e=>{
+    if(!menuPopup.contains(e.target) && e.target!==menuBtn) menuPopup.style.display="none";
+  });
+  logoutBtn.addEventListener("click", ()=>{
+    if(confirm("Logout?")){
+      localStorage.removeItem(USER_KEY);
+      location.href="index.html";
+    }
+  });
 })();

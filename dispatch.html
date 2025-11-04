@@ -1,68 +1,125 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>VEER Dispatch — Dashboard</title>
-  <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css" />
-  <!-- SheetJS for Excel -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <!-- jsPDF for PDF -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <!-- EmailJS included in index; re-include safe -->
-  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+  <meta charset="UTF-8">
+  <title>VEER ENTERPRISE Dispatch Manager</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body { font-family: Arial; margin: 20px; background: #f9f9f9; }
+    h2 { margin: 0; }
+    input, textarea, button { width: 100%; padding: 8px; margin: 6px 0; }
+    button { cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #ccc; padding: 6px; font-size: 14px; }
+    th { background: #eee; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; }
+    .topbar img { height: 40px; border-radius: 5px; margin-right: 10px; }
+    #menuBtn { font-size: 24px; cursor: pointer; user-select: none; }
+    #menuPopup {
+      display: none;
+      position: absolute;
+      right: 10px;
+      top: 50px;
+      background: white;
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 6px;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    #menuPopup img {
+      width: 60px;
+      margin-bottom: 8px;
+      border-radius: 50%;
+    }
+    #logoutBtn {
+      padding: 6px 10px;
+      cursor: pointer;
+      background: #ff5555;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    .section {
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      box-shadow: 0 0 5px #ccc;
+      margin-top: 15px;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>VEER Dispatch Manager</h1>
-      <div id="userBadge"></div>
-    </header>
 
-    <section class="card">
-      <h2>Add Dispatch</h2>
-      <form id="dispatchForm">
-        <label>Dispatch Date & Time</label>
-        <input id="dt" type="datetime-local" />
+  <div class="topbar">
+    <div style="display:flex;align-items:center;">
+      <img src="veer_logo.png" alt="Logo">
+      <h2>VEER ENTERPRISE - Dispatch Manager</h2>
+    </div>
+    <div id="menuBtn">⋮</div>
+  </div>
 
-        <label>Product Serial Number</label>
-        <input id="serial" type="text" required />
+  <div id="menuPopup">
+    <img src="veer_logo.png" alt="Logo">
+    <p style="margin:0;font-weight:bold;">VEER ENTERPRISE</p>
+    <hr>
+    <div id="logoutBtn">🔓 Logout</div>
+  </div>
 
-        <label>Receiver Name</label>
-        <input id="rname" type="text" required />
+  <p id="userBadge" style="font-weight:bold; text-align:center; margin-top:10px;"></p>
 
-        <label>Receiver Mobile</label>
-        <input id="rmobile" type="tel" required />
+  <div class="section">
+    <form id="dispatchForm">
+      <label>Date & Time:</label>
+      <input type="datetime-local" id="dt" required>
 
-        <label>Receiver Location (address)</label>
-        <input id="rloc" type="text" placeholder="Optional: fetch GPS below" />
+      <label>Product Name:</label>
+      <input type="text" id="pname" required placeholder="Product Name">
 
-        <button type="submit">Save Dispatch</button>
-      </form>
+      <label>Product Serial Number:</label>
+      <input type="text" id="serial" required placeholder="Serial Number">
 
-      <button id="getLocation">Fetch Current GPS</button>
-    </section>
+      <label>Description:</label>
+      <textarea id="desc" placeholder="Short dispatch note..." rows="2"></textarea>
 
-    <section class="card">
-      <h2>History</h2>
-      <input id="search" placeholder="Search serial / receiver..." />
-      <table id="historyTable">
-        <thead>
-          <tr>
-            <th>DateTime</th><th>Serial</th><th>Receiver</th><th>Mobile</th><th>Location</th><th>Actions</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <label>Receiver Name:</label>
+      <input type="text" id="rname" required>
 
-      <div class="row">
-        <button id="exportExcel">Export to Excel</button>
-        <button id="exportPdf">Export to PDF</button>
-        <button id="shareData">Share Latest</button>
-        <button id="clearAll">Clear All (Local)</button>
-      </div>
-    </section>
+      <label>Receiver Mobile:</label>
+      <input type="tel" id="rmobile" required>
+
+      <label>Receiver Location:</label>
+      <input type="text" id="rloc" placeholder="Latitude,Longitude or Google Maps link">
+      <button type="button" id="getLocation">📍 Fetch Current GPS</button>
+
+      <button type="submit">➕ Add Dispatch</button>
+    </form>
+  </div>
+
+  <div class="section">
+    <h3>📜 Dispatch History</h3>
+    <input type="text" id="search" placeholder="Search by name, product, or serial...">
+    <table id="historyTable">
+      <thead>
+        <tr>
+          <th>Date-Time</th>
+          <th>Product Name</th>
+          <th>Serial No.</th>
+          <th>Description</th>
+          <th>Receiver</th>
+          <th>Mobile</th>
+          <th>Location</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <button id="exportExcel">📊 Export Excel</button>
+    <button id="exportPdf">🧾 Export PDF</button>
+    <button id="shareData">📤 Share Last Dispatch</button>
+    <button id="clearAll">🗑 Clear All</button>
   </div>
 
   <script src="script.js"></script>
