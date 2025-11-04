@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VEER Dispatch — Dashboard</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- SheetJS for Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <!-- jsPDF for PDF -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <!-- EmailJS included in index; re-include safe -->
+  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>VEER Dispatch Manager</h1>
+      <div id="userBadge"></div>
+    </header>
+
+    <section class="card">
+      <h2>Add Dispatch</h2>
+      <form id="dispatchForm">
+        <label>Dispatch Date & Time</label>
+        <input id="dt" type="datetime-local" />
+
+        <label>Product Serial Number</label>
+        <input id="serial" type="text" required />
+
+        <label>Receiver Name</label>
+        <input id="rname" type="text" required />
+
+        <label>Receiver Mobile</label>
+        <input id="rmobile" type="tel" required />
+
+        <label>Receiver Location (address)</label>
+        <input id="rloc" type="text" placeholder="Optional: fetch GPS below" />
+
+        <button type="submit">Save Dispatch</button>
+      </form>
+
+      <button id="getLocation">Fetch Current GPS</button>
+    </section>
+
+    <section class="card">
+      <h2>History</h2>
+      <input id="search" placeholder="Search serial / receiver..." />
+      <table id="historyTable">
+        <thead>
+          <tr>
+            <th>DateTime</th><th>Serial</th><th>Receiver</th><th>Mobile</th><th>Location</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="row">
+        <button id="exportExcel">Export to Excel</button>
+        <button id="exportPdf">Export to PDF</button>
+        <button id="shareData">Share Latest</button>
+        <button id="clearAll">Clear All (Local)</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
